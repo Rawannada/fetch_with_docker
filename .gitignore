@@ -1,0 +1,14 @@
+.venv/
+env/
+__pycache__/
+*.pyc
+logs/
+airflow.cfg
+unittests.cfg
+*.db
+*.sqlite
+*.env
+secret_config.json
+data/
+db_data/
+volumes/
