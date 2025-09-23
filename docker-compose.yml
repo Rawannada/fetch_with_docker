@@ -4,11 +4,18 @@ x-airflow-common: &airflow-common
   build: .
   environment:
     &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__CORE__FERNET_KEY: ''
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW_CORE_EXECUTOR: SequentialExecutor
+    AIRFLOW_CORE_FERNET_KEY: ''
+    AIRFLOW_CORE_DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW_CORE_LOAD_EXAMPLES: 'false'
+    AIRFLOW_CORE_SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW_SMTP_SMTP_HOST: smtp.gmail.com
+    AIRFLOW_SMTP_SMTP_PORT: 587
+    AIRFLOW_SMTP_SMTP_STARTTLS: 'True'
+    AIRFLOW_SMTP_SMTP_SSL: 'False'
+    AIRFLOW_SMTP_SMTP_USER: rwannada22@gmail.com
+    AIRFLOW_SMTP_SMTP_PASSWORD: xvxkwinpiiqwzuew  
+    AIRFLOW_SMTP_SMTP_MAIL_FROM: rwannada22@gmail.com
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -62,4 +69,4 @@ services:
 
 volumes:
   postgres_data:
-  mysql_data:
+  mysql_data:

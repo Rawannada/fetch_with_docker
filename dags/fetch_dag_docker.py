@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.providers.mysql.hooks.mysql import MySqlHook
+from airflow.operators.email import EmailOperator  # استيراد الـ EmailOperator
 import requests
 import time
 from bs4 import BeautifulSoup
-from airflow.operators.python import PythonOperator
-from airflow.providers.mysql.hooks.mysql import MySqlHook
 
 # ======= Updated headers + cookies =======
 headers = {
@@ -34,8 +35,6 @@ cookies = {
 def get_amazon_data_books(num_books, **kwargs):
     base_url = "https://www.amazon.com/s?k=data+engineering+books"
     url = f"{base_url}&page=1"
-
-    # small delay to look human
     time.sleep(2)
     response = requests.get(url, headers=headers, cookies=cookies, timeout=20)
 
@@ -46,7 +45,7 @@ def get_amazon_data_books(num_books, **kwargs):
     book_containers = soup.find_all('div', {'data-component-type': 's-search-result'})
     if not book_containers:
         print("⚠️ No book containers found. Maybe Captcha page returned.")
-        print(response.text[:1000])  # طباعة أول 1000 character للديباج
+        print(response.text[:1000])
         return []
 
     books = []
@@ -67,11 +66,7 @@ def get_amazon_data_books(num_books, **kwargs):
 
     books = books[:num_books]
     unique_books = {book['Title']: book for book in books}.values()
-    unique_books_list = list(unique_books)
-
-    print(f"Fetched {len(unique_books_list)} unique books")
-    return unique_books_list
-
+    return list(unique_books)
 
 def insert_book_data_into_mysql(ti, **kwargs):
     book_data = ti.xcom_pull(task_ids='fetch_book_data')
@@ -91,11 +86,7 @@ def insert_book_data_into_mysql(ti, **kwargs):
                 rating = float(rating_str.split()[0])
             except:
                 rating = None
-
-        mysql_hook.run(insert_query, parameters=(
-            book['Title'], book.get('Author'), rating
-        ))
-
+        mysql_hook.run(insert_query, parameters=(book['Title'], book.get('Author'), rating))
 
 def create_mysql_table():
     create_table_sql = """
@@ -108,7 +99,6 @@ def create_mysql_table():
     """
     mysql_hook = MySqlHook(mysql_conn_id='books_mysql_connection')
     mysql_hook.run(create_table_sql)
-
 
 default_args = {
     'owner': 'airflow',
@@ -143,4 +133,24 @@ insert_book_data_task = PythonOperator(
     dag=dag,
 )
 
-create_table_task >> fetch_book_data_task >> insert_book_data_task
+# -----------------------------
+# Email notifications زي أول DAG
+# -----------------------------
+success_email = EmailOperator(
+    task_id="send_success_email",
+    to=["rwannada222@gmail.com"],
+    subject="✅ Pipeline Succeeded",
+    html_content="<h3>The pipeline has completed successfully 🎉</h3>",
+    trigger_rule="all_success",
+)
+
+failure_email = EmailOperator(
+    task_id="send_failure_email",
+    to=["rwannada222@gmail.com"],
+    subject="❌ Pipeline Failed",
+    html_content="<h3>The pipeline has failed 🚨</h3>",
+    trigger_rule="one_failed",
+)
+
+# ترتيب المهام مع الـ Email
+create_table_task >> fetch_book_data_task >> insert_book_data_task >> [success_email, failure_email]
