@@ -1,21 +1,28 @@
-Fetch Data with Airflow & Docker
-This project demonstrates how to automate data fetching, processing, and storage workflows using Apache Airflow within a containerized environment powered by Docker Compose. This setup integrates PostgreSQL, MySQL, and Redis services with Airflow to create a robust data pipeline.
+Fetch & Process Amazon Books with Airflow & Docker
+
+This project demonstrates how to automate the fetching, cleaning, transformation, and storage of book data from Amazon using Apache Airflow within a Docker Compose environment. The pipeline integrates MySQL, PostgreSQL, and Redis to create a robust, scalable workflow.
 
 Features
-Airflow DAGs: Automated workflows for fetching and processing data.
 
-PostgreSQL: Serves as the metadata database for Airflow, managing all workflow states.
+Automated Workflows (DAGs): Fetch, clean, and insert book data automatically.
 
-MySQL: A dedicated database for storing project-specific data, such as a books database.
+Data Cleaning & Transformation:
 
-Redis: Used for caching, message brokering, or as a key-value store to support specific tasks.
+Removes duplicate books.
 
-Containerized Environment: Simplifies setup and deployment across different systems using Docker Compose.
+Converts ratings to float.
 
-Scalable Architecture: Designed to be easily extended with new DAGs, operators, or plugins.
+Adds recommended_flag column (Yes if rating ≥ 4.0, No otherwise).
 
-Project Structure
+MySQL Storage: Stores structured book data with title, author, rating, and recommended_flag.
+
+Email Notifications: Sends success or failure emails after pipeline completion.
+
+Containerized Environment: Docker Compose integrates Airflow, MySQL, PostgreSQL, and Redis.
+
+Scalable Architecture: Easily add new DAGs, operators, or plugins.
 ```bash
+Project Structure
 fetch_with_docker/
 ├── dags/                # Airflow DAG definitions
 ├── data/                # Raw data (ignored in Git)
@@ -25,35 +32,32 @@ fetch_with_docker/
 ├── Dockerfile           # Custom Docker image definition
 ├── docker-compose.yml   # Docker services configuration
 ├── requirements.txt     # Python dependencies
-├── .gitignore           # Specifies files and folders to ignore
+├── .gitignore           # Specifies files/folders to ignore
 └── README.md            # Project documentation
 ```
 Requirements
-Docker: The core platform for containerization.
 
-Docker Compose: To orchestrate and run the multi-container application.
+Docker: Core platform for containerization.
 
-Python 3.9+: For developing and writing Airflow DAGs.
+Docker Compose: Orchestrates multi-container setup.
+
+Python 3.9+: Develop and run Airflow DAGs.
 
 Setup & Run
-Follow these simple steps to get the project up and running on your machine:
 
 Clone the repository:
-
-```Bash
-
+```bash
 git clone https://github.com/Rawannada/fetch_data_airflow.git
 cd fetch_data_airflow
 ```
-Build and start all services:
-This command will build the Docker images and start all the services defined in docker-compose.yml.
 
-```Bash
+Build and start services:
+```bash
 
 docker-compose up --build
 ```
+
 Access the Airflow UI:
-Open your web browser and navigate to the following URL:
 
 URL: http://localhost:8080
 
@@ -61,31 +65,32 @@ Default Credentials: airflow / airflow
 
 Trigger the DAG:
 
-Go to the Airflow UI.
+Navigate to the DAGs page in the Airflow UI.
 
-Navigate to the DAGs page.
-
-Find the fetch_dag_docker and click the "Trigger DAG" button.
+Find fetch_and_store_amazon_books and click Trigger DAG.
 
 Services Overview
 Service	Description
-postgres	The PostgreSQL database for Airflow's metadata.
-mysql	The MySQL database for storing project data.
-redis	The Redis cache/message broker service.
-airflow-webserver	The Airflow web interface for managing DAGs.
-airflow-scheduler	The service that schedules and triggers DAGs.
-Note: All database and Airflow data are persisted using Docker volumes, ensuring that your data remains intact even if containers are stopped or restarted.
+postgres	Metadata database for Airflow
+mysql	Stores project-specific book data
+redis	Caching and message brokering
+airflow-webserver	Airflow UI
+airflow-scheduler	Schedules and triggers DAGs
+
+All database and Airflow data are persisted using Docker volumes.
 
 Notes
-Sensitive files and data, such as .env files, raw data, logs, and database files, are excluded from Git via the .gitignore file.
 
-To add new workflows, simply create a new Python file under the dags/ directory.
+Sensitive files (.env, logs, raw data, database files) are excluded via .gitignore.
 
-For custom logic or operators, add your code to the plugins/ folder.
+To add new workflows, create a new Python file in dags/.
+
+For custom logic/operators, use the plugins/ folder.
 
 Author
+
 Rawan Nada
 
 Email: Rwannada22@gmail.com
 
-LinkedIn: Rawan Nada
+LinkedIn: https://www.linkedin.com/in/rawan-nada-a63994281
