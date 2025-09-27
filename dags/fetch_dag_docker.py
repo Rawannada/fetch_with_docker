@@ -6,6 +6,8 @@ from airflow.operators.email import EmailOperator
 import requests
 import time
 from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
+import numpy as np
 
 # ======= Updated headers + cookies =======
 headers = {
@@ -116,7 +118,7 @@ def insert_book_data_into_mysql(ti, **kwargs):
             continue
 
 # -----------------------------
-# recommended_flag
+# Create table
 # -----------------------------
 def create_mysql_table():
     create_table_sql = """
@@ -132,13 +134,71 @@ def create_mysql_table():
     mysql_hook.run(create_table_sql)
 
 # -----------------------------
+# Visualization - IMPROVED VERSION
+# -----------------------------
+def generate_visualization(ti, **kwargs):
+    books = ti.xcom_pull(task_ids='clean_books')
+    if not books:
+        print("⚠️ No books available for visualization")
+        return
+    
+    filtered_books = [b for b in books if b["Rating"]]
+    filtered_books = sorted(filtered_books, key=lambda x: x["Rating"], reverse=True)[:10]
+
+    if not filtered_books:
+        print("⚠️ No valid ratings found")
+        return
+
+    # تقصير العناوين الطويلة وتحسينها
+    titles = []
+    for b in filtered_books:
+        title = b['Title']
+        # إزالة الكلمات غير ضرورية وتقصير العناوين
+        title = title.replace('(English Edition)', '').replace('Kindle Edition', '').strip()
+        if len(title) > 40:
+            title = title[:37] + "..."
+        titles.append(title)
+    
+    ratings = [b['Rating'] for b in filtered_books]
+
+    # زيادة حجم الصورة وتحسين التنسيق
+    plt.figure(figsize=(14, 10))
+    bars = plt.barh(titles, ratings, color="lightblue", edgecolor='darkblue', alpha=0.8, height=0.7)
+    
+    # إضافة قيم التقييم على الشريط
+    for bar, rating in zip(bars, ratings):
+        width = bar.get_width()
+        plt.text(width + 0.05, bar.get_y() + bar.get_height()/2, 
+                f'{rating:.1f}', ha='left', va='center', fontsize=10, fontweight='bold')
+    
+    plt.xlabel("Rating", fontsize=12, fontweight='bold')
+    plt.ylabel("Book Titles", fontsize=12, fontweight='bold')
+    plt.title("Top 10 Books by Rating", fontsize=14, fontweight='bold')
+    
+    # تحسين المحاور
+    plt.xlim(0, 5.5)
+    plt.grid(axis='x', alpha=0.3, linestyle='--')
+    plt.gca().invert_yaxis()
+    
+    # تحسين المسافات
+    plt.tight_layout()
+    plt.subplots_adjust(left=0.3)
+
+    output_path = "/tmp/top_books.png"
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"✅ Improved visualization saved at {output_path}")
+    return output_path
+
+# -----------------------------
 # DAG
 # -----------------------------
 default_args = {'owner': 'airflow', 'depends_on_past': False, 'start_date': datetime(2025, 1, 1)}
 dag = DAG(
     'fetch_and_store_amazon_books',
     default_args=default_args,
-    description='Fetch Amazon book data and store in MySQL',
+    description='Fetch Amazon book data, clean, store in MySQL, and send report',
     schedule_interval=timedelta(days=1),
     catchup=False,
 )
@@ -147,6 +207,7 @@ create_table_task = PythonOperator(task_id='create_table', python_callable=creat
 fetch_book_data_task = PythonOperator(task_id='fetch_book_data', python_callable=get_amazon_data_books, op_args=[50], dag=dag)
 clean_books_task = PythonOperator(task_id='clean_books', python_callable=clean_and_transform_books, dag=dag)
 insert_book_data_task = PythonOperator(task_id='insert_book_data', python_callable=insert_book_data_into_mysql, dag=dag)
+visualize_task = PythonOperator(task_id='generate_visualization', python_callable=generate_visualization, dag=dag)
 
 # -----------------------------
 # Email notifications
@@ -155,7 +216,11 @@ success_email = EmailOperator(
     task_id="send_success_email",
     to=["rwannada222@gmail.com"],
     subject="✅ Pipeline Succeeded",
-    html_content="<h3>The pipeline has completed successfully 🎉</h3>",
+    html_content="""
+        <h3>The pipeline has completed successfully 🎉</h3>
+        <p>Attached is the visualization report of the top 10 books.</p>
+    """,
+    files=["/tmp/top_books.png"],
     trigger_rule="all_success",
 )
 failure_email = EmailOperator(
@@ -167,6 +232,7 @@ failure_email = EmailOperator(
 )
 
 # -----------------------------
-# 
+# Workflow
 # -----------------------------
-create_table_task >> fetch_book_data_task >> clean_books_task >> insert_book_data_task >> [success_email, failure_email]
+create_table_task >> fetch_book_data_task >> clean_books_task >> insert_book_data_task >> visualize_task >> success_email
+create_table_task >> fetch_book_data_task >> clean_books_task >> insert_book_data_task >> failure_email

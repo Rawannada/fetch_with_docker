@@ -15,15 +15,18 @@ x-airflow-common: &airflow-common
     AIRFLOW__SMTP__SMTP_STARTTLS: 'True'
     AIRFLOW__SMTP__SMTP_SSL: 'False'
     AIRFLOW__SMTP__SMTP_USER: rwannada22@gmail.com
-    AIRFLOW__SMTP__SMTP_PASSWORD: tkizriiuokqncqsi
+    AIRFLOW__SMTP__SMTP_PASSWORD: ztjyhvxdekjfenso
     AIRFLOW__SMTP__SMTP_MAIL_FROM: rwannada22@gmail.com
+
+    # ⬇️ دي السطر اللي يضيف الـ requirements
+    _PIP_ADDITIONAL_REQUIREMENTS: -r /requirements.txt
 
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ./requirements.txt:/requirements.txt
   user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-1000}"
-
 
 services:
   postgres:
